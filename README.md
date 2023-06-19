@@ -37,7 +37,7 @@ python get_identifier_from_isni.py \
   -i input-file.csv \
   -o enriched-file.csv \
   --column-name-isni isniID \
-  --wait 0.5
+  --wait 0.3
   --identifiers kbrID=KBR ntaID=NTA bnfID=BNF gender=gender nationalities=nationality
 ```
 
