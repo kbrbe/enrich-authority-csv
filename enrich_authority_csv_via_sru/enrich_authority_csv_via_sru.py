@@ -1,6 +1,7 @@
 import os
 import csv
 from dotenv import load_dotenv
+from config_parser import ConfigParser
 import lib
 import time
 from tqdm import tqdm
@@ -13,25 +14,31 @@ def main():
   parser = ArgumentParser(description='This script reads a CSV file and requests for each found ISNI identifier (in the column specified with --column-name-isni) the identifier(s) specified with --identifier')
   parser.add_argument('-i', '--input-file', action='store', required=True, help='A CSV file that contains records about contributors')
   parser.add_argument('-o', '--output-file', action='store', required=True, help='The CSV file in which the enriched records are stored')
-  parser.add_argument('--identifiers', metavar='KEY=VALUE', required=True, nargs='+', help='A key value pair where the key is the name of the identifier column in the input that should be fetched and the value is the name of the identifier as stated in the ISNI database.')
-  parser.add_argument('--column-name-isni', action='store', required=True, help='The name of the column in the input file that contains the ISNI identifier to lookup')
+  parser.add_argument('--data', metavar='KEY=VALUE', required=True, nargs='+', help='A key value pair where the key is the name of the data column in the input that should be fetched and the value is the name of the datafield as stated in the configuration.')
+  parser.add_argument('--api', action='store', required=True, help='The name of the API that should be queried, as specified in the configuration')
+  parser.add_argument('--record-schema', action='store', required=True, help='The name of the record schema that should be requested, for example "isni-e" or "unimarcxchange"')
+  parser.add_argument('-q', '--query', action='store', required=True, help='The query pattern used to query, e.g. "aut.isni all" for BnF or "pica.isn=" for ISNI')
+  parser.add_argument('--column-name-lookup-identifier', action='store', required=True, help='The name of the column in the input file that contains the identifier to lookup')
+  parser.add_argument('-c', '--config', action='store', required=True, help='The JSON configuration that specifies SRU APIs and which data fields an be retrieved from it.')
   parser.add_argument('--wait', action='store', type=float, default = 1, help='The number of seconds to wait in between API requests')
   parser.add_argument('-d', '--delimiter', action='store', default=',', help='The delimiter of the input CSV')
   args = parser.parse_args()
 
 
-  #
-  # load environment variables from .env file
-  #
-  load_dotenv()
+  config = ConfigParser(args.config)
+  apiName = args.api
+  query = args.query
+  recordSchema = args.record_schema
 
-  USERNAME = os.getenv('ISNI_SRU_USERNAME')
-  PASSWORD = os.getenv('ISNI_SRU_PASSWORD')
+  dataFields = dict(map(lambda s: s.split('='), args.data))
+
+  # check if the requested data can be fetched based on the given API config
+  lib.verifyTask(config, apiName, recordSchema, dataFields)
+
 
   delimiter = args.delimiter
   secondsBetweenAPIRequests = args.wait
-  isniColumnName = args.column_name_isni
-  identifiers = dict(map(lambda s: s.split('='), args.identifiers))
+  identifierColumnName = args.column_name_lookup_identifier
 
   with open(args.input_file, 'r') as inFile, \
        open(args.output_file, 'w') as outFile:
@@ -41,10 +48,10 @@ def main():
     countReader = csv.DictReader(inFile, delimiter=delimiter)
 
     # the CSV should at least contain columns for the ISNI identifier and the local identifier we want to enrich
-    minNeededColumns = [isniColumnName] + list(identifiers.keys())
+    minNeededColumns = [identifierColumnName] + list(dataFields.keys())
     lib.checkIfColumnsExist(countReader.fieldnames, minNeededColumns)
 
-    counters = lib.initializeCounters(countReader, identifiers, isniColumnName)
+    counters = lib.initializeCounters(countReader, dataFields, identifierColumnName)
     inFile.seek(0, 0)
     
     numberRowsAtLeastOneIdentifierMissing = counters['numberRowsMissingAtLeastOneIdentifier']
@@ -53,7 +60,7 @@ def main():
     isniPercentage = (inputRowCountISNI*100)/inputRowCountAll
     print()
     print(f'In total, the file contains {inputRowCountAll} lines from which {inputRowCountISNI} have an ISNI ({isniPercentage:.2f}%)')
-    for column, isniSourceName in identifiers.items():
+    for column, isniSourceName in dataFields.items():
       inputRowCountMissing = counters[isniSourceName]['numberMissingIdentifierRows']
       inputRowCountMissingAndISNI = counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI']
       missingPercentage = (inputRowCountMissing*100)/inputRowCountAll
@@ -72,9 +79,8 @@ def main():
     outputWriter.writeheader()
 
     # the payload for each request (the actual query will be appended for each request)
-    payload = {'operation': 'searchRetrieve', 'version': '1.1', 'recordSchema': 'isni-e', 'sortKeys': 'none'}
-    baseURL = 'https://isni-m.oclc.org/sru'
-    url = f'{baseURL}/username={USERNAME}/password={PASSWORD}/DB=1.3'
+    payload = config.getPayload(apiName)
+    url = config.getURL(apiName)
 
     skippedRows = 0
     # instantiating tqdm separately, such that we can add a description
@@ -92,7 +98,7 @@ def main():
         continue
 
       # if there is no ISNI there is also nothing we can do
-      isniRaw = row[isniColumnName]
+      isniRaw = row[identifierColumnName]
       if isniRaw == '':
         outputWriter.writerow(row)
         continue
@@ -101,7 +107,7 @@ def main():
 
       # update the progress bar description
       descriptions = []
-      for identifierColumn, identifierNameISNI in identifiers.items():
+      for identifierColumn, identifierNameISNI in dataFields.items():
         descriptions.append(f'{identifierNameISNI} ' + str(counters[identifierNameISNI]['numberFoundISNIRows']))
       requestLog.set_description(f'found ' + ','.join(descriptions))
 
@@ -110,17 +116,22 @@ def main():
       for isni in isniList:
 
         # request the record for the found ISNI
-        query = f'pica.isn = "{isni}"'
-        payload['query'] = query
+        payload['query'] = f'{query} "{isni}"'
         xmlRecord = lib.requestRecord(url, payload)
 
+        if not xmlRecord:
+          outputWriter.writerow(row)
+          requestLog.update(1)
+          continue
+
         # extract information for each needed identifier
-        for identifierColumn, identifierNameISNI in identifiers.items():
+        for identifierColumn, identifierNameISNI in dataFields.items():
           # Only enrich it when the currently looked for identifier is missing
           # note: in the future we could think of an 'update' functionality
           if row[identifierColumn] == '':
       
-            foundIdentifier = lib.extractIdentifier(xmlRecord, identifierNameISNI)
+            datafieldDefinition = config.getDatafieldDefinition(apiName, recordSchema, identifierNameISNI)
+            foundIdentifier = lib.extractIdentifier(xmlRecord, identifierNameISNI, datafieldDefinition)
 
             if foundIdentifier:
               if not rowAlreadyProcessed:
@@ -133,7 +144,7 @@ def main():
                 foundIdentifiers[identifierNameISNI] = set([lib.getPrefixedIdentifier(foundIdentifier, identifierNameISNI)])
               counters[identifierNameISNI]['numberFoundISNIs'] += 1
 
-      for identifierColumn, identifierNameISNI in identifiers.items():
+      for identifierColumn, identifierNameISNI in dataFields.items():
         # we can only add something if we found something
         if identifierNameISNI in foundIdentifiers:
           currentValue = row[identifierColumn]
@@ -144,7 +155,7 @@ def main():
       outputWriter.writerow(row)
       time.sleep(secondsBetweenAPIRequests)
 
-  for identifierColumn, identifierNameISNI in identifiers.items():
+  for identifierColumn, identifierNameISNI in dataFields.items():
     counterFound = counters[identifierNameISNI]['numberFoundISNIRows']
     inputRowCountMissingAndISNI = counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI']
     counterFoundISNI = counters[identifierNameISNI]['numberFoundISNIs']

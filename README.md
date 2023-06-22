@@ -1,12 +1,13 @@
-# Enrich authority csv via ISNI
+# Enrich authority csv via SRU
 
-A python script that uses the ISNI SRU API to complete a CSV file with missing data based on an available ISNI identifier column
+A python script that uses specified Search/Retrieve via URL (SRU) APIs to complete a CSV file with missing data based on an available lookup identifier column
+
+Possible scenarios could be to fetch data from the SRU APIs of the ISNI database or of the National Library of France (BnF).
 
 ISNI is the [ISO 27729:2012](https://www.iso.org/standard/44292.html) standard name identifier that uniquely identifies public entities who contributed to creative works.
-As an ISNI registration agency, the Royal Library of Belgium (KBR) can request ISNI identifiers from the ISNI central database.
 
-Given a CSV file where each row is a contributor to creative works, this script uses the ISNI identifier in one of the columns to
-fill data gaps in other specified columns based on data available via the ISNI Search/Retrieve via URL (SRU) API.
+Given a CSV file where each row is a contributor to creative works, this script uses a specified identifier in one of the columns to
+fill data gaps in other specified columns based on data available via a specified SRU API.
 
 ## Usage
 
@@ -33,22 +34,27 @@ for requests against the ISNI SRU API to fill possible gaps in the column
 * `nationality` with nationality information found in ISNI records
 
 ```bash
-python get_identifier_from_isni.py \
+python get_identifier_from_sru.py \
   -i input-file.csv \
   -o enriched-file.csv \
-  --column-name-isni isniID \
+  --column-name-lookup-identifier isniID \
   --wait 0.3
-  --identifiers kbrID=KBR ntaID=NTA bnfID=BNF gender=gender nationalities=nationality
+  --config config.json
+  --api ISNI
+  --data kbrID=KBR ntaID=NTA bnfID=BNF gender=gender nationalities=nationality
 ```
+In the given example, details about the specified `api` will be looked up in the config file.
+Based on this in can also be determined if the specified data can be enriched,
+i.e. if the config file provides a XPath expression to find the data in the specified source.
 
-Please note that you should provide a `.env` file with your credentials for the ISNI SRU API:
+Please note that you should provide a `.env` file with your credentials for the ISNI SRU API (this is not needed for public SRU APIs such as for BnF):
 
 ```
 ISNI_SRU_USERNAME=yourUser
 ISNI_SRU_PASSWORD=yourPassword
 ```
 
-The script will first provide some statistics of how many rows are possible to be enriched
+The script will first provide some statistics of how many rows could possibly be enriched
 by looping over the input file in a streaming fashion.
 Afterwards the script starts requesting data, progress is shown in a progress bar.
 
