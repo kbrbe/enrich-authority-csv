@@ -27,8 +27,8 @@ class ConfigParser:
   def checkRecordSchemaExistence(self, endpoint, recordSchema):
     self.checkEndpointExistence(endpoint)
     if not self.containsRecordSchemaDefinition(endpoint, recordSchema):
-      possibleSchemas = self.config['apis'][endpoint]['data'].keys()
-      raise Exception(f'Record schema "{recordSchema}" not specified for API "{apiName}", possible values are {possibleSchemas}')
+      possibleSchemas = ','.join(list(self.config['apis'][endpoint]['data'].keys()))
+      raise Exception(f'Record schema "{recordSchema}" not specified for API "{apiName}", possible values are "{possibleSchemas}"')
 
 
   def containsDatafieldDefinition(self, endpoint, recordSchema, datafield):
@@ -37,13 +37,13 @@ class ConfigParser:
 
   def getDatafieldNames(self, endpoint, recordSchema):
     self.checkRecordSchemaExistence(endpoint, recordSchema)
-    return config['apis'][endpoint]['data'][recordSchema].keys()
+    return self.config['apis'][endpoint]['data'][recordSchema].keys()
 
   def checkDatafieldExistence(self, endpoint, recordSchema, datafield):
     self.checkRecordSchemaExistence(endpoint, recordSchema)
     if not self.containsDatafieldDefinition(endpoint, recordSchema, datafield):
-      possibleFields = self.getDatafieldNames()
-      raise Exception(f'Datafield "{datafield}" not specified for recordSchema "{recordSchema}" for API "{endpoint}", possible values are {possibleFields}')
+      possibleFields = ','.join(list(self.getDatafieldNames(endpoint, recordSchema)))
+      raise Exception(f'Datafield "{datafield}" not specified for recordSchema "{recordSchema}" for API "{endpoint}", possible values are "{possibleFields}"')
 
   def getRecordSchemas(self, endpoint):
     self.checkEndpointExistence(endpoint)

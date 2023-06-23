@@ -3,7 +3,8 @@ import requests
 import xml.etree.ElementTree as ET
 
 NS_SRW = 'http://www.loc.gov/zing/srw/'
-ALL_NS = {'srw': NS_SRW}
+NS_MARC_EXCHANGE = 'info:lc/xmlns/marcxchange-v2'
+ALL_NS = {'srw': NS_SRW, 'mxc': NS_MARC_EXCHANGE}
 
 
 # -----------------------------------------------------------------------------
