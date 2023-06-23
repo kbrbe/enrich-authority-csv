@@ -1,0 +1,69 @@
+{
+  "apis": {
+    "BnF": {
+      "connection": {
+        "type": "unauthenticated",
+        "url": "http://catalogue.bnf.fr/api/SRU",
+        "payload": {
+          "operation": "searchRetrieve",
+          "version": "1.2"
+        }
+      },
+      "data": {
+        "unimarcxchange": {
+          "nationality": {
+            "type": "element",
+            "path": "srw:records/srw:record/srw:recordData/mxc:record/mxc:datafield[@tag='102']/mxc:subfield[@code='a']"
+          },
+          "language": {
+            "type": "element",
+            "path": "srw:records/srw:record/srw:recordData/mxc:record/mxc:datafield[@tag='101']/mxc:subfield[@code='a']"
+          }
+         }
+      }
+    },
+    "ISNI": {
+      "connection": {
+        "type": "authenticated",
+        "url": "https://isni-m.oclc.org/sru/username=$userVariable/password=$passwordVariable/DB=1.3",
+        "userVariable": "ISNI_SRU_USERNAME",
+        "passwordVariable": "ISNI_SRU_PASSWORD",
+        "payload": {
+          "operation": "searchRetrieve",
+          "version": "1.1",
+          "sortKeys": "none"
+        }
+      },
+      "data": {
+        "isni-e": {
+          "nationality": {
+            "type": "element",
+            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/nationality"
+           },
+          "gender": {
+            "type": "element",
+            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/gender"
+          },
+          "KBR": {
+            "type": "identifier",
+            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/sources",
+            "identifierCodeSubpath": "codeOfSource",
+            "identifierNameSubpath": "sourceIdentifier"
+          },
+          "BNF": {
+            "type": "identifier",
+            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/sources",
+            "identifierCodeSubpath": "codeOfSource",
+            "identifierNameSubpath": "sourceIdentifier"
+          },
+          "NTA": {
+            "type": "identifier",
+            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/sources",
+            "identifierCodeSubpath": "codeOfSource",
+            "identifierNameSubpath": "sourceIdentifier"
+          }
+        }
+      }
+    }
+  }
+}

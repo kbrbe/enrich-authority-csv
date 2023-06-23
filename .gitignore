@@ -1,6 +1,9 @@
 # Used Python environment
 py-enrich-csv-via-isni-env/
 
+# actual data
+*.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
