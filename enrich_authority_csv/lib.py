@@ -3,7 +3,8 @@ import requests
 import xml.etree.ElementTree as ET
 
 NS_SRW = 'http://www.loc.gov/zing/srw/'
-ALL_NS = {'srw': NS_SRW}
+NS_MARC_EXCHANGE = 'info:lc/xmlns/marcxchange-v2'
+ALL_NS = {'srw': NS_SRW, 'mxc': NS_MARC_EXCHANGE}
 
 
 # -----------------------------------------------------------------------------
@@ -201,7 +202,7 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
   """
 
   # initialize counters
-  counters = {'numberRows': 0, 'numberRowsHaveISNI': 0, 'numberISNIs': 0, 'numberRowsMissingAtLeastOneIdentifier': 0}
+  counters = {'numberRows': 0, 'numberRowsHaveISNI': 0, 'numberISNIs': 0, 'numberRowsMissingAtLeastOneIdentifier': 0, 'numberRowsMissingAndPossibleToBeEnriched': 0}
   for column, isniSourceName in identifiers.items():
     counters[isniSourceName] = {
       'numberMissingIdentifierRows': 0,
@@ -225,6 +226,8 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
     if row[isniColumnName] != '':
         counters['numberRowsHaveISNI'] += 1
 
+    posssibleEnrichmentTotalRowsNotCountedYet = True
+
     # count for the specific identifiers we want to add via ISNI
     for columnName, isniSourceName in identifiers.items():
 
@@ -238,6 +241,9 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
           counters[isniSourceName]['numberRowsThatCannotBeEnriched'] += 1
         else:
           counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI'] += 1
+          if posssibleEnrichmentTotalRowsNotCountedYet:
+            counters['numberRowsMissingAndPossibleToBeEnriched'] += 1
+            posssibleEnrichmentTotalRowsNotCountedYet = False
 
   return counters
 
@@ -254,37 +260,31 @@ def getPrefixedIdentifier(identifier, identifierName):
 
 
 # -----------------------------------------------------------------------------
-def extractIdentifier(xmlContent, identifierName, delimiter=';'):
+def extractIdentifier(xmlContent, datafieldName, datafieldDefinition, delimiter=';'):
   """This function tries to extract the identifier with the given name. If not found it returns None."""
 
   root = ET.fromstring(xmlContent)
 
-  if identifierName == 'nationality':
-    nationalities = set()
-    for record in root.findall('srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/nationality', ALL_NS):
-      nationalities.add(record.text)
-    return delimiter.join(sorted(nationalities))
+  foundData = set()
+  datafieldType = datafieldDefinition['type']
+  if datafieldType == 'element':
+    for record in root.findall(datafieldDefinition['path'], ALL_NS):
+      foundData.add(record.text)
+    return delimiter.join(sorted(foundData))
 
-  if identifierName == 'gender':
-    genderInfo = set()
-    for record in root.findall('srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/gender', ALL_NS):
-      genderInfo.add(record.text)
-    return delimiter.join(sorted(genderInfo))
+  elif datafieldType == 'identifier':
+    for record in root.findall(datafieldDefinition['path'], ALL_NS):
+      sourceName = getElementValue(record.find(datafieldDefinition['identifierCodeSubpath']))
+      identifier = getElementValue(record.find(datafieldDefinition['identifierNameSubpath']))
 
-  for record in root.findall('srw:records/srw:record/srw:recordData/responseRecord/', ALL_NS):
-    sourceTags = record.findall('./ISNIMetadata/sources')
+      if datafieldName == sourceName:
+        return identifier
+  else:
+    print(f'undefined datafield type "{datafieldType}"')
 
-    if sourceTags:
-      for source in sourceTags:
- 
-        sourceName = getElementValue(source.find('codeOfSource'))
-        identifier = getElementValue(source.find('sourceIdentifier'))
 
-        if sourceName == identifierName:
-          return identifier
-
-    # if this statement is reached nothing was found so we return None
-    return None
+  # if this statement is reached nothing was found so we return None
+  return None
 
 # -----------------------------------------------------------------------------
 def requestRecord(url, payload):
@@ -297,18 +297,44 @@ def requestRecord(url, payload):
     return r.content
 
   except requests.exceptions.Timeout:
-    print(f'There was a timeout in iteration {counter}')
+    print(f'There was a timeout in iteration for url "{url}" and payload "{payloadStr}"')
   except requests.exceptions.TooManyRedirects:
-    print(f'There were too many redirects in iteration {counter}')
+    print(f'There were too many redirects in iteration for url "{url}" and payload "{payloadStr}"')
   except requests.exceptions.HTTPError as err:
-    print(f'There was an HTTP response code which is not 200 in iteration {counter}')
+    print(f'There was an HTTP response code which is not 200 for url "{url}" and payload "{payloadStr}"')
+    print(err)
   except requests.exceptions.RequestException as e:
     print(f'There was an exception in the request')
   except Exception as e:
     print(f'There was a general exception!')
     print(e)
 
+# -----------------------------------------------------------------------------
+def verifyTask(config, apiName, recordSchema, requestedDataFields):
 
+  # Do we even have information about the requested API?
+  config.checkEndpointExistence(apiName)
+
+  # Do we have specifications for the requested record schema?
+  config.checkRecordSchemaExistence(apiName, recordSchema)
+
+  atLeastOneException = False
+  for columnName, datafield in requestedDataFields.items():
+
+    # Do we have a datafield specification for the given record schema?
+    # print possible exceptions and continue checking
+    try:
+      config.checkDatafieldExistence(apiName, recordSchema, datafield)
+
+      # TODO
+      # check based on a possible JSONSchema if the structure of the datafield is correct
+
+    except Exception as e:
+      atLeastOneException = True
+      print(e)
+
+  if atLeastOneException:
+    raise Exception(f'There have been issues with the requested datafields and the specified APIs')
 
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
