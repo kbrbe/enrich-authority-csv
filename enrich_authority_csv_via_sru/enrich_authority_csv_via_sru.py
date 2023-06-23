@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 # -----------------------------------------------------------------------------
 def main():
 
-  parser = ArgumentParser(description='This script reads a CSV file and requests for each found ISNI identifier (in the column specified with --column-name-isni) the identifier(s) specified with --identifier')
+  parser = ArgumentParser(description='This script reads a CSV file and requests for each found lookup identifier (in the column specified with --column-name-lookup-identifier) the datafields specified with --data')
   parser.add_argument('-i', '--input-file', action='store', required=True, help='A CSV file that contains records about contributors')
   parser.add_argument('-o', '--output-file', action='store', required=True, help='The CSV file in which the enriched records are stored')
   parser.add_argument('--data', metavar='KEY=VALUE', required=True, nargs='+', help='A key value pair where the key is the name of the data column in the input that should be fetched and the value is the name of the datafield as stated in the configuration.')
@@ -47,28 +47,29 @@ def main():
     # Count some stats and reset the file pointer afterwards
     countReader = csv.DictReader(inFile, delimiter=delimiter)
 
-    # the CSV should at least contain columns for the ISNI identifier and the local identifier we want to enrich
+    # the CSV should at least contain columns for the lookup identifier and the local datafields we want to enrich
     minNeededColumns = [identifierColumnName] + list(dataFields.keys())
     lib.checkIfColumnsExist(countReader.fieldnames, minNeededColumns)
 
     counters = lib.initializeCounters(countReader, dataFields, identifierColumnName)
     inFile.seek(0, 0)
     
-    numberRowsAtLeastOneIdentifierMissing = counters['numberRowsMissingAtLeastOneIdentifier']
+    numberRowsAtLeastOneDatafieldMissing = counters['numberRowsMissingAtLeastOneIdentifier']
     inputRowCountAll = counters['numberRows']
-    inputRowCountISNI = counters['numberRowsHaveISNI']
-    isniPercentage = (inputRowCountISNI*100)/inputRowCountAll
+    inputRowCountHaveLookupIdentifier = counters['numberRowsHaveISNI']
+    rowsWithLookupIdentifierPercentage = (inputRowCountHaveLookupIdentifier*100)/inputRowCountAll
     print()
-    print(f'In total, the file contains {inputRowCountAll} lines from which {inputRowCountISNI} have an ISNI ({isniPercentage:.2f}%)')
-    for column, isniSourceName in dataFields.items():
-      inputRowCountMissing = counters[isniSourceName]['numberMissingIdentifierRows']
-      inputRowCountMissingAndISNI = counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI']
+    print(f'In total, the file contains {inputRowCountAll} lines from which {inputRowCountHaveLookupIdentifier} contain the identifier to lookup ({rowsWithLookupIdentifierPercentage:.2f}%)')
+    print()
+    for column, remoteFieldName in dataFields.items():
+      inputRowCountMissing = counters[remoteFieldName]['numberMissingIdentifierRows']
+      inputRowCountFieldMissingAndLookupIdentifier = counters[remoteFieldName]['numberRowsToBeEnrichedHaveISNI']
       missingPercentage = (inputRowCountMissing*100)/inputRowCountAll
-      print(f'Stats for column "{column}" that should be enriched via "{isniSourceName}" field from the ISNI database')
-      print(f'{inputRowCountMissing} {isniSourceName} identifiers are missing and we want to get them ({missingPercentage:.2f}%).')
+      print(f'Stats for column "{column}" that should be enriched via "{remoteFieldName}" field from the remote SRU API')
+      print(f'{inputRowCountMissing} {remoteFieldName} values are missing and we want to get them ({missingPercentage:.2f}%).')
       if inputRowCountMissing > 0:
-        missingChancePercentage = (inputRowCountMissingAndISNI*100)/inputRowCountMissing
-        print(f'From those {inputRowCountMissing} missing, we could enrich {inputRowCountMissingAndISNI}, because they have an ISNI ({missingChancePercentage:.2f}%)')
+        missingChancePercentage = (inputRowCountFieldMissingAndLookupIdentifier*100)/inputRowCountMissing
+        print(f'From those {inputRowCountMissing} missing, we could enrich {inputRowCountFieldMissingAndLookupIdentifier}, because they have a lookup identifier ({missingChancePercentage:.2f}%)')
       print()
     print()
 
@@ -86,7 +87,7 @@ def main():
     skippedRows = 0
     # instantiating tqdm separately, such that we can add a description
     # The total number of lines is the one we have to make requests for
-    requestLog = tqdm(position=0, total=numberRowsAtLeastOneIdentifierMissing)
+    requestLog = tqdm(position=0, total=numberRowsAtLeastOneDatafieldMissing)
 
     for row in inputReader:
 
@@ -98,26 +99,26 @@ def main():
         outputWriter.writerow(row)
         continue
 
-      # if there is no ISNI there is also nothing we can do
-      isniRaw = row[identifierColumnName]
-      if isniRaw == '':
+      # if there is no lookup identifier there is also nothing we can do
+      identifierRaw = row[identifierColumnName]
+      if identifierRaw == '':
         outputWriter.writerow(row)
         continue
       else:
-        isniList = isniRaw.split(';') if ';' in isniRaw else [isniRaw]
+        lookupIdentifierList = identifierRaw.split(';') if ';' in identifierRaw else [identifierRaw]
 
       # update the progress bar description
       descriptions = []
-      for identifierColumn, identifierNameISNI in dataFields.items():
-        descriptions.append(f'{identifierNameISNI} ' + str(counters[identifierNameISNI]['numberFoundISNIRows']))
+      for identifierColumn, lookupIdentifier in dataFields.items():
+        descriptions.append(f'{lookupIdentifier} ' + str(counters[lookupIdentifier]['numberFoundISNIRows']))
       requestLog.set_description(f'found ' + ','.join(descriptions))
 
       foundIdentifiers = {}
       rowAlreadyProcessed = False
-      for isni in isniList:
+      for lookupIdentifier in lookupIdentifierList:
 
-        # request the record for the found ISNI
-        payload['query'] = f'{query} "{isni}"'
+        # request the record for the found identifier
+        payload['query'] = f'{query} "{lookupIdentifier}"'
         xmlRecord = lib.requestRecord(url, payload)
 
         if not xmlRecord:
@@ -126,48 +127,48 @@ def main():
           continue
 
         # extract information for each needed identifier
-        for identifierColumn, identifierNameISNI in dataFields.items():
+        for identifierColumn, lookupIdentifierName in dataFields.items():
           # Only enrich it when the currently looked for identifier is missing
           # note: in the future we could think of an 'update' functionality
           if row[identifierColumn] == '':
       
-            datafieldDefinition = config.getDatafieldDefinition(apiName, recordSchema, identifierNameISNI)
-            foundIdentifier = lib.extractIdentifier(xmlRecord, identifierNameISNI, datafieldDefinition)
+            datafieldDefinition = config.getDatafieldDefinition(apiName, recordSchema, lookupIdentifierName)
+            foundIdentifier = lib.extractIdentifier(xmlRecord, lookupIdentifierName, datafieldDefinition)
 
             if foundIdentifier:
               if not rowAlreadyProcessed:
-                counters[identifierNameISNI]['numberFoundISNIRows'] += 1
+                counters[lookupIdentifierName]['numberFoundISNIRows'] += 1
                 rowAlreadyProcessed = True
 
-              if identifierNameISNI in foundIdentifiers: 
-                foundIdentifiers[identifierNameISNI].add(lib.getPrefixedIdentifier(foundIdentifier, identifierNameISNI))
+              if lookupIdentifierName in foundIdentifiers: 
+                foundIdentifiers[lookupIdentifierName].add(lib.getPrefixedIdentifier(foundIdentifier, lookupIdentifierName))
               else:
-                foundIdentifiers[identifierNameISNI] = set([lib.getPrefixedIdentifier(foundIdentifier, identifierNameISNI)])
-              counters[identifierNameISNI]['numberFoundISNIs'] += 1
+                foundIdentifiers[lookupIdentifierName] = set([lib.getPrefixedIdentifier(foundIdentifier, lookupIdentifierName)])
+              counters[lookupIdentifierName]['numberFoundISNIs'] += 1
 
-      for identifierColumn, identifierNameISNI in dataFields.items():
+      for identifierColumn, lookupIdentifierName in dataFields.items():
         # we can only add something if we found something
-        if identifierNameISNI in foundIdentifiers:
+        if lookupIdentifierName in foundIdentifiers:
           currentValue = row[identifierColumn]
-          row[identifierColumn] = ';'.join(foundIdentifiers[identifierNameISNI])
+          row[identifierColumn] = ';'.join(foundIdentifiers[lookupIdentifierName])
       requestLog.update(1)
 
 
       outputWriter.writerow(row)
       time.sleep(secondsBetweenAPIRequests)
 
-  for identifierColumn, identifierNameISNI in dataFields.items():
-    counterFound = counters[identifierNameISNI]['numberFoundISNIRows']
-    inputRowCountMissingAndISNI = counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI']
-    counterFoundISNI = counters[identifierNameISNI]['numberFoundISNIs']
-    if inputRowCountMissingAndISNI > 0:
-      percentage = (counterFound*100)/inputRowCountMissingAndISNI
+  for identifierColumn, lookupIdentifierName in dataFields.items():
+    counterFound = counters[lookupIdentifierName]['numberFoundISNIRows']
+    inputRowCountMissingFieldHavingLookupIdentifier = counters[lookupIdentifierName]['numberRowsToBeEnrichedHaveISNI']
+    counterFoundIdentifier = counters[lookupIdentifierName]['numberFoundISNIs']
+    if inputRowCountMissingFieldHavingLookupIdentifier > 0:
+      percentage = (counterFound*100)/inputRowCountMissingFieldHavingLookupIdentifier
       print()
-      print(f'{counterFound} from possible {inputRowCountMissingAndISNI} records ({percentage:.2f}%) could be enriched with {identifierNameISNI} identifiers!')
-      print(f'(In total {counterFoundISNI} were found (this number might be higher, because there can be more than one ISNI per row)')
+      print(f'{counterFound} from possible {inputRowCountMissingFieldHavingLookupIdentifier} records ({percentage:.2f}%) could be enriched with {lookupIdentifierName}-values from the SRU API!')
+      print(f'(In total {counterFoundIdentifier} were found (this number might be higher, because there can be more than one lookup identifier per row)')
       print()
     else:
       print()
-      print(f'{identifierNameISNI}: No missing values that would have an ISNI')
+      print(f'{lookupIdentifierName}: No missing values that would have a lookup identifier. So there is nothing to enrich')
 
 main()
