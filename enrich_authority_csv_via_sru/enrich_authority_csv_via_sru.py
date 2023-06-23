@@ -80,6 +80,7 @@ def main():
 
     # the payload for each request (the actual query will be appended for each request)
     payload = config.getPayload(apiName)
+    payload['recordSchema'] = recordSchema
     url = config.getURL(apiName)
 
     skippedRows = 0

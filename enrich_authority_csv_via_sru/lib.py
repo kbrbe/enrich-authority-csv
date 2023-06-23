@@ -277,26 +277,8 @@ def extractIdentifier(xmlContent, datafieldName, datafieldDefinition, delimiter=
     print(f'undefined datafield type "{datafieldType}"')
 
 
-#  if identifierName == 'nationality':
-#    nationalities = set()
-#    for record in root.findall('srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/nationality', ALL_NS):
-#      nationalities.add(record.text)
-#    return delimiter.join(sorted(nationalities))
-
-#  for record in root.findall('srw:records/srw:record/srw:recordData/responseRecord/', ALL_NS):
-#    sourceTags = record.findall('./ISNIMetadata/sources')
-
-#    if sourceTags:
-#      for source in sourceTags:
- 
-#        sourceName = getElementValue(source.find('codeOfSource'))
-#        identifier = getElementValue(source.find('sourceIdentifier'))
-
-#        if sourceName == identifierName:
-#          return identifier
-
-    # if this statement is reached nothing was found so we return None
-#    return None
+  # if this statement is reached nothing was found so we return None
+  return None
 
 # -----------------------------------------------------------------------------
 def requestRecord(url, payload):
