@@ -1,4 +1,4 @@
-# Enrich authority csv via SRU
+# Enrich authority csv
 
 A python script that uses specified Search/Retrieve via URL (SRU) APIs to complete a CSV file with missing data based on an available lookup identifier column
 
@@ -21,7 +21,7 @@ python3 -m venv py-enrich-csv-via-isni-env
 source py-request-isni-env/bin/activate
 
 # Install dependencies
-pip -r requirements.txt
+pip install -r requirements.txt
 ```
 
 Given a CSV file with the input data, you can call the script in the following way to use the ISNI identifier of the column `isniID`
@@ -34,61 +34,109 @@ for requests against the ISNI SRU API to fill possible gaps in the column
 * `nationality` with nationality information found in ISNI records
 
 ```bash
-python get_identifier_from_sru.py \
+python enrich_authority_csv.py \
   -i input-file.csv \
   -o enriched-file.csv \
   --column-name-lookup-identifier isniID \
-  --wait 0.3
-  --config config.json
-  --api ISNI
+  --wait 0.3 \
+  --query "pica.isn=" \
+  --config config.json \
+  --record-schema isni-e \
+  --api ISNI \
   --data kbrID=KBR ntaID=NTA bnfID=BNF gender=gender nationalities=nationality
 ```
+
+Example of enriching data via the SRU API of the National Library of France (BnF):
+
+```
+python enrich_authority_csv.py \
+  -i input-file.csv \
+  -o enriched-file.csv \
+  --column-name-lookup-identifier isniIDs \
+  --data nationalities=nationality \
+  --wait 0 \
+  --query "aut.isni all" \
+  --config ../config-example.json \
+  --record-schema unimarcxchange \
+  --api BnF
+```
+
+The `--api` parameter has to be a name from the config file specified with `--config`
+
+The script will also give errors if the caller uses non-specified datafields,
+e.g. for exmaple `--data kbrIDs=KBR` (enriching KBR identifiers of column `kbrIDs` based on the remote field `KBR`) does not work with the given configuration,
+because the config file does not specify how to get `KBR` from the BnF records.
+For this specific example this is not possible, because the records do not contain this information.
+The ISNI SRU API on the other hand, provides that data field and it is specified in the configuration for the ISNI SRU API.
+
 In the given example, details about the specified `api` will be looked up in the config file.
 Based on this in can also be determined if the specified data can be enriched,
 i.e. if the config file provides a XPath expression to find the data in the specified source.
 
+In case of the ISNI API, the username and password are part of the URL.
+Currently the script does not take other forms of authentication, for example via HTTP authentication, into account.
+
+
+The script will first provide some statistics of how many rows could possibly be enriched
+by looping over the input file in a streaming fashion.
+Afterwards the script starts requesting data, progress is shown in a progress bar.
+
+
+### Example output
+
+```bash
+In total, the file contains 299 lines from which 298 contain the identifier to lookup (99.67%)
+
+Stats for column "kbrIDs" that should be enriched via "KBR" field from the remote SRU API
+7 KBR values are missing and we want to get them (2.34%).
+From those 7 missing, we could enrich 7, because they have a lookup identifier (100.00%)
+
+Stats for column "ntaIDs" that should be enriched via "NTA" field from the remote SRU API
+0 NTA values are missing and we want to get them (0.00%).
+
+Stats for column "bnfIDs" that should be enriched via "BNF" field from the remote SRU API
+137 BNF values are missing and we want to get them (45.82%).
+From those 137 missing, we could enrich 136, because they have a lookup identifier (99.27%)
+
+Stats for column "nationalities" that should be enriched via "nationality" field from the remote SRU API
+19 nationality values are missing and we want to get them (6.35%).
+From those 19 missing, we could enrich 18, because they have a lookup identifier (94.74%)
+
+Stats for column "gender" that should be enriched via "gender" field from the remote SRU API
+13 gender values are missing and we want to get them (4.35%).
+From those 13 missing, we could enrich 12, because they have a lookup identifier (92.31%)
+
+
+found KBR 3,NTA 0,BNF 116,nationality 6,gender 0: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 155/155 [00:16<00:00, 11.50it/s]
+3 from possible 7 records (42.86%) could be enriched with KBR-values from the SRU API!
+(In total 3 were found (this number might be higher, because there can be more than one lookup identifier per row)
+
+
+NTA: No missing values that would have a lookup identifier. So there is nothing to enrich
+
+117 from possible 136 records (86.03%) could be enriched with BNF-values from the SRU API!
+(In total 120 were found (this number might be higher, because there can be more than one lookup identifier per row)
+
+
+6 from possible 18 records (33.33%) could be enriched with nationality-values from the SRU API!
+(In total 8 were found (this number might be higher, because there can be more than one lookup identifier per row)
+
+
+0 from possible 12 records (0.00%) could be enriched with gender-values from the SRU API!
+(In total 0 were found (this number might be higher, because there can be more than one lookup identifier per row)
+```
+
+## Authentication
+
 Please note that you should provide a `.env` file with your credentials for the ISNI SRU API (this is not needed for public SRU APIs such as for BnF):
+You can refer to these environment variables in the configuration file.
+
 
 ```
 ISNI_SRU_USERNAME=yourUser
 ISNI_SRU_PASSWORD=yourPassword
 ```
 
-The script will first provide some statistics of how many rows could possibly be enriched
-by looping over the input file in a streaming fashion.
-Afterwards the script starts requesting data, progress is shown in a progress bar.
-
-Example statistics that are printed before the requests
-
-```bash
-In total, the file contains 25633 lines from which 13601 have an ISNI (53.06%)
-Stats for column "kbrIDs" that should be enriched via "KBR" field from the ISNI database
-12186 KBR identifiers are missing and we want to get them (47.54%).
-From those 12186 missing, we could enrich 3016, because they have an ISNI (24.75%)
-
-Stats for column "ntaIDs" that should be enriched via "NTA" field from the ISNI database
-19177 NTA identifiers are missing and we want to get them (74.81%).
-From those 19177 missing, we could enrich 7992, because they have an ISNI (41.67%)
-
-Stats for column "bnfIDs" that should be enriched via "BNF" field from the ISNI database
-19126 BNF identifiers are missing and we want to get them (74.61%).
-From those 19126 missing, we could enrich 7105, because they have an ISNI (37.15%)
-
-Stats for column "gender" that should be enriched via "gender" field from the ISNI database
-14279 gender identifiers are missing and we want to get them (55.71%).
-From those 14279 missing, we could enrich 3373, because they have an ISNI (23.62%)
-
-Stats for column "nationalities" that should be enriched via "nationality" field from the ISNI database
-15505 nationality identifiers are missing and we want to get them (60.49%).
-From those 15505 missing, we could enrich 3751, because they have an ISNI (24.19%)
-
-```
-
-Example output of the progress bar that constantly updates the number of found data elements
-
-```bash
-found KBR 1398,NTA 6504,BNF 1234,gender 159,nationality 137:  50%|█████████████████████████████████████████████████▉                                                 | 12218/24250 [36:57<34:54,  5.74it/s]
-```
 
 ## Software tests
 
