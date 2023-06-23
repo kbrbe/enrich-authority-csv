@@ -58,6 +58,7 @@ def main():
     inputRowCountAll = counters['numberRows']
     inputRowCountHaveLookupIdentifier = counters['numberRowsHaveISNI']
     rowsWithLookupIdentifierPercentage = (inputRowCountHaveLookupIdentifier*100)/inputRowCountAll
+    inputRowCountEmptyAndPossibleToEnrich = counters['numberRowsMissingAndPossibleToBeEnriched']
     print()
     print(f'In total, the file contains {inputRowCountAll} lines from which {inputRowCountHaveLookupIdentifier} contain the identifier to lookup ({rowsWithLookupIdentifierPercentage:.2f}%)')
     print()
@@ -87,7 +88,7 @@ def main():
     skippedRows = 0
     # instantiating tqdm separately, such that we can add a description
     # The total number of lines is the one we have to make requests for
-    requestLog = tqdm(position=0, total=numberRowsAtLeastOneDatafieldMissing)
+    requestLog = tqdm(position=0, total=inputRowCountEmptyAndPossibleToEnrich)
 
     for row in inputReader:
 

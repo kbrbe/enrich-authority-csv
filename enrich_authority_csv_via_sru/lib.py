@@ -202,7 +202,7 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
   """
 
   # initialize counters
-  counters = {'numberRows': 0, 'numberRowsHaveISNI': 0, 'numberISNIs': 0, 'numberRowsMissingAtLeastOneIdentifier': 0}
+  counters = {'numberRows': 0, 'numberRowsHaveISNI': 0, 'numberISNIs': 0, 'numberRowsMissingAtLeastOneIdentifier': 0, 'numberRowsMissingAndPossibleToBeEnriched': 0}
   for column, isniSourceName in identifiers.items():
     counters[isniSourceName] = {
       'numberMissingIdentifierRows': 0,
@@ -226,6 +226,8 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
     if row[isniColumnName] != '':
         counters['numberRowsHaveISNI'] += 1
 
+    posssibleEnrichmentTotalRowsNotCountedYet = True
+
     # count for the specific identifiers we want to add via ISNI
     for columnName, isniSourceName in identifiers.items():
 
@@ -239,6 +241,9 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
           counters[isniSourceName]['numberRowsThatCannotBeEnriched'] += 1
         else:
           counters[isniSourceName]['numberRowsToBeEnrichedHaveISNI'] += 1
+          if posssibleEnrichmentTotalRowsNotCountedYet:
+            counters['numberRowsMissingAndPossibleToBeEnriched'] += 1
+            posssibleEnrichmentTotalRowsNotCountedYet = False
 
   return counters
 
