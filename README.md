@@ -11,7 +11,7 @@ ISNI is the [ISO 27729:2012](https://www.iso.org/standard/44292.html) standard n
 Given a CSV file where each row is a contributor to creative works, this script uses a specified identifier in one of the columns to
 fill data gaps in other specified columns based on data available via a specified SRU API.
 
-## Usage
+## Usage via the commandline
 
 Create and activate a Python virtual environment
 ```bash
@@ -83,8 +83,29 @@ The script will first provide some statistics of how many rows could possibly be
 by looping over the input file in a streaming fashion.
 Afterwards the script starts requesting data, progress is shown in a progress bar.
 
+## Usage as a library
 
-### Example output
+The tool can also be used as a library within another Python script or a Jupyter notebook.
+
+```python
+from enrich_authority_csv.enrich_authority_csv import main as enrich_authority_csv
+
+enrich_authority_csv(
+  configFile='config-example.json',
+  inputFile='input-file.csv',
+  outputFile='output-file.csv',
+  apiName='BnF',
+  query='aut.isni all',
+  recordSchema='unimarcxchange',
+  dataFields={'nationalities': 'nationality'},
+  delimiter=',',
+  secondsBetweenAPIRequests=0,
+  identifierColumnName='isniIDs')
+
+```
+
+
+## Example output
 
 ```bash
 In total, the file contains 299 lines from which 298 contain the identifier to lookup (99.67%)
