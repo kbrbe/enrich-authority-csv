@@ -1,16 +1,15 @@
 import os
 import csv
 from dotenv import load_dotenv
-from config_parser import ConfigParser
-import lib
+from enrich_authority_csv.config_parser import ConfigParser
+import enrich_authority_csv.lib as lib
 import time
 from tqdm import tqdm
 from argparse import ArgumentParser
 
      
 # -----------------------------------------------------------------------------
-def main():
-
+def parseArguments():
   parser = ArgumentParser(description='This script reads a CSV file and requests for each found lookup identifier (in the column specified with --column-name-lookup-identifier) the datafields specified with --data')
   parser.add_argument('-i', '--input-file', action='store', required=True, help='A CSV file that contains records about contributors')
   parser.add_argument('-o', '--output-file', action='store', required=True, help='The CSV file in which the enriched records are stored')
@@ -24,24 +23,22 @@ def main():
   parser.add_argument('-d', '--delimiter', action='store', default=',', help='The delimiter of the input CSV')
   args = parser.parse_args()
 
+  return args
 
-  config = ConfigParser(args.config)
-  apiName = args.api
-  query = args.query
-  recordSchema = args.record_schema
+# -----------------------------------------------------------------------------
+def main(configFile, inputFile, outputFile, apiName, query, recordSchema, dataFields, delimiter, secondsBetweenAPIRequests, identifierColumnName):
 
-  dataFields = dict(map(lambda s: s.split('='), args.data))
+
+  config = ConfigParser(configFile)
+
 
   # check if the requested data can be fetched based on the given API config
   lib.verifyTask(config, apiName, recordSchema, dataFields)
 
 
-  delimiter = args.delimiter
-  secondsBetweenAPIRequests = args.wait
-  identifierColumnName = args.column_name_lookup_identifier
 
-  with open(args.input_file, 'r') as inFile, \
-       open(args.output_file, 'w') as outFile:
+  with open(inputFile, 'r') as inFile, \
+       open(outputFile, 'w') as outFile:
 
 
     # Count some stats and reset the file pointer afterwards
@@ -172,4 +169,7 @@ def main():
       print()
       print(f'{lookupIdentifierName}: No missing values that would have a lookup identifier. So there is nothing to enrich')
 
-main()
+if __name__ == '__main__':
+  args = parseArguments()
+  dataFields = dict(map(lambda s: s.split('='), args.data))
+  main(args.config, args.input_file, args.output_file, args.api, args.query, args.record_schema, dataFields, args.delimiter, args.wait, args.column_name_lookup_identifier)
