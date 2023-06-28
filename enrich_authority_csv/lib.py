@@ -198,7 +198,7 @@ def initializeCounters(countReader, identifiers, isniColumnName, nationalityColu
   ... {'kbrIDs':'','ntaIDs':'','isniIDs':'002;003'},
   ... {'kbrIDs':'123','ntaIDs':'456','isniIDs':'002;003'}]
   >>> initializeCounters(rows, {'kbrIDs':'KBR', 'ntaIDs':'NTA'}, 'isniIDs')
-  {'numberRows': 5, 'numberRowsHaveISNI': 3, 'numberISNIs': 5, 'numberRowsMissingAtLeastOneIdentifier': 4, 'KBR': {'numberMissingIdentifierRows': 3, 'numberISNIs': 5, 'numberRowsToBeEnrichedHaveISNI': 2, 'numberRowsThatCannotBeEnriched': 1}, 'NTA': {'numberMissingIdentifierRows': 4, 'numberISNIs': 5, 'numberRowsToBeEnrichedHaveISNI': 2, 'numberRowsThatCannotBeEnriched': 2}}
+  {'numberRows': 5, 'numberRowsHaveISNI': 3, 'numberISNIs': 5, 'numberRowsMissingAtLeastOneIdentifier': 4, 'numberRowsMissingAndPossibleToBeEnriched': 2, 'KBR': {'numberMissingIdentifierRows': 3, 'numberISNIs': 5, 'numberRowsToBeEnrichedHaveISNI': 2, 'numberRowsThatCannotBeEnriched': 1, 'numberFoundISNIRows': 0, 'numberFoundISNIs': 0}, 'NTA': {'numberMissingIdentifierRows': 4, 'numberISNIs': 5, 'numberRowsToBeEnrichedHaveISNI': 2, 'numberRowsThatCannotBeEnriched': 2, 'numberFoundISNIRows': 0, 'numberFoundISNIs': 0}}
   """
 
   # initialize counters
