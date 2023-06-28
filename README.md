@@ -1,5 +1,7 @@
 # Enrich authority csv
 
+[![DOI](https://zenodo.org/badge/655869471.svg)](https://zenodo.org/badge/latestdoi/655869471)
+
 A python script that uses specified Search/Retrieve via URL (SRU) APIs to complete a CSV file with missing data based on an available lookup identifier column
 
 Possible scenarios could be to fetch data from the SRU APIs of the ISNI database or of the National Library of France (BnF).
