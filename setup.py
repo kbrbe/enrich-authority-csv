@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = "enrich_authority_csv",
-    version = "0.2.0",
+    version = "0.3.0",
     author = "Sven Lieber",
     author_email = "Sven.Lieber@kbr.be",
     description = ("A python script that uses SRU APIs to complete a CSV file with missing data based on an available identifier column that can be looked up in the SRU API"),
