@@ -32,7 +32,6 @@ for requests against the ISNI SRU API to fill possible gaps in the column
 * `kbrID` with the `KBR` identifier found in public ISNI records (Royal Library of Belgium)
 * `bnfID` with the `BNF` identifier found in public ISNI records (National Library of France)
 * `ntaID` with the `NTA` identifier found in public ISNI records (Royal Library of the Netherlands)
-* `gender` with gender information found in ISNI records
 * `nationality` with nationality information found in ISNI records
 
 ```bash
@@ -45,7 +44,7 @@ python enrich_authority_csv.py \
   --config config.json \
   --record-schema isni-e \
   --api ISNI \
-  --data kbrID=KBR ntaID=NTA bnfID=BNF gender=gender nationalities=nationality
+  --data kbrID=KBR ntaID=NTA bnfID=BNF nationalities=nationality
 ```
 
 Example of enriching data via the SRU API of the National Library of France (BnF):
@@ -125,12 +124,8 @@ Stats for column "nationalities" that should be enriched via "nationality" field
 19 nationality values are missing and we want to get them (6.35%).
 From those 19 missing, we could enrich 18, because they have a lookup identifier (94.74%)
 
-Stats for column "gender" that should be enriched via "gender" field from the remote SRU API
-13 gender values are missing and we want to get them (4.35%).
-From those 13 missing, we could enrich 12, because they have a lookup identifier (92.31%)
 
-
-found KBR 3,NTA 0,BNF 116,nationality 6,gender 0: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 155/155 [00:16<00:00, 11.50it/s]
+found KBR 3,NTA 0,BNF 116,nationality 6: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 155/155 [00:16<00:00, 11.50it/s]
 3 from possible 7 records (42.86%) could be enriched with KBR-values from the SRU API!
 (In total 3 were found (this number might be higher, because there can be more than one lookup identifier per row)
 
@@ -144,9 +139,6 @@ NTA: No missing values that would have a lookup identifier. So there is nothing 
 6 from possible 18 records (33.33%) could be enriched with nationality-values from the SRU API!
 (In total 8 were found (this number might be higher, because there can be more than one lookup identifier per row)
 
-
-0 from possible 12 records (0.00%) could be enriched with gender-values from the SRU API!
-(In total 0 were found (this number might be higher, because there can be more than one lookup identifier per row)
 ```
 
 ## Authentication
@@ -178,4 +170,9 @@ The license of this software was chosen using https://ufal.github.io/public-lice
 | requests | We use this library to perform HTTP requests against the ISNI APIs. | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) |
 | tqdm | A library to provide a user-friendly progress bar, used to show the progress of enriched data from the ISNI database. | [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/) |
 | urllib3 | Used by the requests library to make requests, thus implicitly used to make API requests against the ISNI APIs. | [MIT](https://opensource.org/licenses/MIT) |
+
+
+## Contact
+
+Sven Lieber - Sven.Lieber@kbr.be - Royal Library of Belgium (KBR) - https://www.kbr.be/en/
 

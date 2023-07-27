@@ -39,10 +39,7 @@
           "nationality": {
             "type": "element",
             "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/nationality"
-           },
-          "gender": {
-            "type": "element",
-            "path": "srw:records/srw:record/srw:recordData/responseRecord/ISNIAssigned/ISNIMetadata/identity/personOrFiction/additionalInformation/gender"
+           }
           },
           "KBR": {
             "type": "identifier",
