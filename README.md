@@ -179,3 +179,9 @@ The license of this software was chosen using https://ufal.github.io/public-lice
 | tqdm | A library to provide a user-friendly progress bar, used to show the progress of enriched data from the ISNI database. | [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/) |
 | urllib3 | Used by the requests library to make requests, thus implicitly used to make API requests against the ISNI APIs. | [MIT](https://opensource.org/licenses/MIT) |
 
+
+## Contact
+
+Sven Lieber - Sven.Lieber@kbr.be - https://sven-lieber.org
+Royal Library of Belgium (KBR) - https://www.kbr.be/en/
+
