@@ -174,6 +174,5 @@ The license of this software was chosen using https://ufal.github.io/public-lice
 
 ## Contact
 
-Sven Lieber - Sven.Lieber@kbr.be - https://sven-lieber.org
-Royal Library of Belgium (KBR) - https://www.kbr.be/en/
+Sven Lieber - Sven.Lieber@kbr.be - Royal Library of Belgium (KBR) - https://www.kbr.be/en/
 
